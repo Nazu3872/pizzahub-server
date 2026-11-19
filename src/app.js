@@ -6,6 +6,8 @@ const healthRoutes = require('./routes/healthRoutes');
 const authRoutes = require('./routes/authRoutes');
 const menuRoutes = require('./routes/menuRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
+const { handleStripeWebhook } = require('./controllers/webhookController');
 
 const app = express();
 
@@ -17,10 +19,11 @@ app.use(corsMiddleware);
 
 // ============================================================================
 // STRIPE WEBHOOK ROUTE (express.raw BEFORE express.json)
-// IMPORTANT: Keep this placeholder untouched until Step 10 (Stripe integration).
 // Stripe requires the raw, unparsed request body to verify cryptographic signatures.
+// Support both /api/stripe/webhook and /api/webhooks/stripe endpoints.
 // ----------------------------------------------------------------------------
-// app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhookHandler);
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }), handleStripeWebhook);
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), handleStripeWebhook);
 // ============================================================================
 
 // Body parsers for standard JSON API endpoints
@@ -33,6 +36,7 @@ app.use('/api', healthRoutes); // Support both root and /api prefixes
 app.use('/api', authRoutes);
 app.use('/api', menuRoutes);
 app.use('/api', orderRoutes);
+app.use('/api', subscriptionRoutes);
 
 // 404 Catch-all handler
 app.use(notFoundHandler);
