@@ -7,6 +7,7 @@ const authRoutes = require('./routes/authRoutes');
 const menuRoutes = require('./routes/menuRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const { handleStripeWebhook } = require('./controllers/webhookController');
 
 const app = express();
@@ -37,6 +38,7 @@ app.use('/api', authRoutes);
 app.use('/api', menuRoutes);
 app.use('/api', orderRoutes);
 app.use('/api', subscriptionRoutes);
+app.use('/api', adminRoutes);
 
 // 404 Catch-all handler
 app.use(notFoundHandler);
