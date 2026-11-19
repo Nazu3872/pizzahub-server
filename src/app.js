@@ -5,6 +5,7 @@ const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 const healthRoutes = require('./routes/healthRoutes');
 const authRoutes = require('./routes/authRoutes');
 const menuRoutes = require('./routes/menuRoutes');
+const orderRoutes = require('./routes/orderRoutes');
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use('/', healthRoutes);
 app.use('/api', healthRoutes); // Support both root and /api prefixes
 app.use('/api', authRoutes);
 app.use('/api', menuRoutes);
+app.use('/api', orderRoutes);
 
 // 404 Catch-all handler
 app.use(notFoundHandler);
