@@ -3,6 +3,7 @@ const helmet = require('helmet');
 const corsMiddleware = require('./middleware/cors');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 const healthRoutes = require('./routes/healthRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Core routes
 app.use('/', healthRoutes);
 app.use('/api', healthRoutes); // Support both root and /api prefixes
+app.use('/api', authRoutes);
 
 // 404 Catch-all handler
 app.use(notFoundHandler);
