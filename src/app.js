@@ -4,6 +4,7 @@ const corsMiddleware = require('./middleware/cors');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 const healthRoutes = require('./routes/healthRoutes');
 const authRoutes = require('./routes/authRoutes');
+const menuRoutes = require('./routes/menuRoutes');
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/', healthRoutes);
 app.use('/api', healthRoutes); // Support both root and /api prefixes
 app.use('/api', authRoutes);
+app.use('/api', menuRoutes);
 
 // 404 Catch-all handler
 app.use(notFoundHandler);
