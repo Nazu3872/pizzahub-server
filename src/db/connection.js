@@ -1,5 +1,15 @@
 const { MongoClient } = require('mongodb');
+const dns = require('dns');
 const config = require('../config/env');
+
+// On Windows, configure DNS servers to reliably resolve MongoDB SRV records
+if (process.platform === 'win32') {
+  try {
+    dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+  } catch (e) {
+    // fallback silently
+  }
+}
 
 let cachedClient = null;
 let cachedDb = null;
