@@ -78,7 +78,7 @@ async function initDB(db) {
 
   // 3. Orders collection & indexes
   const orders = db.collection('orders');
-  await orders.createIndex({ 'items.itemId': 1, deliveryDate: 1 });
+  await orders.createIndex({ customerId: 1, itemId: 1, deliveryDate: 1 });
   await orders.createIndex({ customerId: 1, createdAt: -1 });
   await orders.createIndex({ vendorId: 1, status: 1 });
 }
