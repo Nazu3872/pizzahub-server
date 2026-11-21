@@ -57,7 +57,7 @@ async function connectDB() {
  */
 function getDB() {
   if (!cachedDb) {
-    throw new Error('Database is not initialized. Call connectDB() first.');
+    throw new Error('Database is not connected. Please ensure MongoDB Atlas Network Access allows your IP or 0.0.0.0/0.');
   }
   return cachedDb;
 }

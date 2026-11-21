@@ -2,6 +2,7 @@ const express = require('express');
 const helmet = require('helmet');
 const corsMiddleware = require('./middleware/cors');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
+const { connectDB } = require('./db/connection');
 const healthRoutes = require('./routes/healthRoutes');
 const authRoutes = require('./routes/authRoutes');
 const menuRoutes = require('./routes/menuRoutes');
@@ -30,6 +31,17 @@ app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), handl
 // Body parsers for standard JSON API endpoints
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Ensure Database connection for incoming API requests
+app.use(async (req, res, next) => {
+  if (req.path === '/health' || req.path === '/api/health') return next();
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 // Core routes - Support both root and /api prefixes seamlessly
 app.use('/', healthRoutes);
