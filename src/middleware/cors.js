@@ -4,25 +4,32 @@ const config = require('../config/env');
 const allowedOrigins = new Set();
 
 if (config.clientUrl) {
-  // Trim trailing slash if present
-  allowedOrigins.add(config.clientUrl.replace(/\/$/, ''));
+  // Support comma-separated URLs in CLIENT_URL
+  config.clientUrl.split(',').forEach((url) => {
+    if (url && url.trim()) {
+      allowedOrigins.add(url.trim().replace(/\/$/, ''));
+    }
+  });
 }
 
-// In development or preview environments, allow local development ports
-if (config.nodeEnv !== 'production') {
-  allowedOrigins.add('http://localhost:3000');
-  allowedOrigins.add('http://127.0.0.1:3000');
-}
+// Always allow local development URLs
+allowedOrigins.add('http://localhost:3000');
+allowedOrigins.add('http://127.0.0.1:3000');
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow non-browser requests (like curl, health checks, or mobile apps without Origin header)
+    // Allow non-browser requests (like curl, health checks, server-to-server)
     if (!origin) {
       return callback(null, true);
     }
 
     const normalizedOrigin = origin.replace(/\/$/, '');
-    if (allowedOrigins.has(normalizedOrigin)) {
+
+    // Allow explicitly configured origins or any Vercel deployment domain
+    if (
+      allowedOrigins.has(normalizedOrigin) ||
+      normalizedOrigin.endsWith('.vercel.app')
+    ) {
       return callback(null, true);
     }
 
