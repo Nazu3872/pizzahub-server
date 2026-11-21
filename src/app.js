@@ -31,13 +31,23 @@ app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), handl
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Core routes
+// Core routes - Support both root and /api prefixes seamlessly
 app.use('/', healthRoutes);
-app.use('/api', healthRoutes); // Support both root and /api prefixes
+app.use('/api', healthRoutes);
+
+app.use('/', authRoutes);
 app.use('/api', authRoutes);
+
+app.use('/', menuRoutes);
 app.use('/api', menuRoutes);
+
+app.use('/', orderRoutes);
 app.use('/api', orderRoutes);
+
+app.use('/', subscriptionRoutes);
 app.use('/api', subscriptionRoutes);
+
+app.use('/', adminRoutes);
 app.use('/api', adminRoutes);
 
 // 404 Catch-all handler
