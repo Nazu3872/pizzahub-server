@@ -6,9 +6,12 @@ const { getDB } = require('../db/connection');
 let remoteJWKS = null;
 
 function getJWKS() {
-  if (!remoteJWKS && config.betterAuthJwksUrl) {
+  if (!remoteJWKS) {
+    const jwksUrl =
+      config.betterAuthJwksUrl ||
+      `${(config.clientUrl || 'https://pizzahub-client-nazu2.vercel.app').replace(/\/$/, '')}/api/auth/jwks`;
     try {
-      remoteJWKS = createRemoteJWKSet(new URL(config.betterAuthJwksUrl));
+      remoteJWKS = createRemoteJWKSet(new URL(jwksUrl));
     } catch (e) {
       console.warn('Could not initialize remote JWKS:', e.message);
     }
