@@ -112,7 +112,22 @@ async function getSubscriptionStatus(req, res) {
       });
     }
 
-    const plan = user.subscriptionPlan || 'free';
+    let plan = user.subscriptionPlan || 'free';
+    const expiresAt = user.subscriptionExpiresAt || null;
+    const isExpired = plan === 'premium' && expiresAt && new Date(expiresAt).getTime() <= Date.now();
+
+    if (isExpired) {
+      plan = 'free';
+      try {
+        await usersCollection.updateOne(
+          { _id: user._id },
+          { $set: { subscriptionPlan: 'free' } }
+        );
+      } catch (downgradeErr) {
+        console.error('Failed to persist expired subscription downgrade:', downgradeErr.message);
+      }
+    }
+
     const isPremium = plan === 'premium';
 
     return res.status(200).json({

@@ -115,6 +115,25 @@ async function verifyJWT(req, res, next) {
       });
     }
 
+    // Enforce subscription expiry: a Premium plan past its expiry date is free
+    let effectivePlan = user.subscriptionPlan || 'free';
+    if (
+      effectivePlan === 'premium' &&
+      user.subscriptionExpiresAt &&
+      new Date(user.subscriptionExpiresAt).getTime() <= Date.now()
+    ) {
+      effectivePlan = 'free';
+      // Persist the downgrade so all future reads are consistent
+      try {
+        await usersCollection.updateOne(
+          { $or: query },
+          { $set: { subscriptionPlan: 'free' } }
+        );
+      } catch (downgradeErr) {
+        console.error('Failed to persist expired subscription downgrade:', downgradeErr.message);
+      }
+    }
+
     // Attach verified user with DATABASE role
     req.user = {
       id: user.id || user._id?.toString(),
@@ -123,7 +142,7 @@ async function verifyJWT(req, res, next) {
       role: user.role || 'customer',
       isBlocked: Boolean(user.isBlocked),
       businessName: user.businessName,
-      subscriptionPlan: user.subscriptionPlan || 'free',
+      subscriptionPlan: effectivePlan,
       subscriptionExpiresAt: user.subscriptionExpiresAt,
     };
 
