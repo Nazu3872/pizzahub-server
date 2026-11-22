@@ -13,9 +13,9 @@ const ALLOWED_CATEGORIES = [
 /**
  * Free plan limit rule:
  * Interpretation: Active items are defined as any item with status "pending" or "approved".
- * Free plan vendors are limited to a maximum of 10 active items simultaneously.
+ * Free plan vendors are limited to a maximum of 3 active items simultaneously.
  */
-const FREE_PLAN_MAX_ACTIVE_ITEMS = 10;
+const FREE_PLAN_MAX_ACTIVE_ITEMS = 3;
 
 // Helper: validate ObjectId
 function parseObjectId(id) {
@@ -80,7 +80,7 @@ async function createMenuItem(req, res) {
     const db = getDB();
     const menuItems = db.collection('menuItems');
 
-    // 2. Enforce Free Plan Limit (Max 10 active items: pending or approved)
+    // 2. Enforce Free Plan Limit (Max 3 active items: pending or approved)
     if (!isPremium) {
       const activeCount = await menuItems.countDocuments({
         vendorId,
