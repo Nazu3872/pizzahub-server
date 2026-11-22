@@ -32,7 +32,7 @@ function getTodayDateString() {
  */
 async function createOrder(req, res) {
   try {
-    const { itemId, deliveryDate, deliveryAddress, message } = req.body;
+    const { itemId, deliveryDate, deliveryAddress, phone, message } = req.body;
     const customerId = req.user.id;
 
     // Rule: Role must be customer
@@ -79,6 +79,15 @@ async function createOrder(req, res) {
     const db = getDB();
     const menuCollection = db.collection('menuItems');
     const ordersCollection = db.collection('orders');
+
+    // 3b. Validation: Phone Number
+    const phoneDigits = typeof phone === 'string' ? phone.replace(/\D/g, '') : '';
+    if (!phone || phoneDigits.length < 10 || phoneDigits.length > 15) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number is required and must contain 10-15 digits',
+      });
+    }
 
     // 4. Retrieve item and verify approval and active status
     const item = await menuCollection.findOne({ _id: itemObjectId });
@@ -133,6 +142,7 @@ async function createOrder(req, res) {
       customerId: customerId.toString(),
       deliveryDate: deliveryDate,
       deliveryAddress: deliveryAddress.trim(),
+      phone: phone.trim(),
       message: message ? message.trim() : '',
       status: 'pending', // default pending
       unitPrice: Number(item.price),
@@ -228,6 +238,7 @@ async function getCustomerOrders(req, res) {
           customerId: order.customerId,
           deliveryDate: order.deliveryDate,
           deliveryAddress: order.deliveryAddress,
+          phone: order.phone || '',
           message: order.message,
           status: order.status,
           totalPrice: order.totalPrice || order.unitPrice || 0,
@@ -397,6 +408,7 @@ async function getVendorOrders(req, res) {
           customerId: order.customerId,
           deliveryDate: order.deliveryDate,
           deliveryAddress: order.deliveryAddress,
+          phone: order.phone || '',
           message: order.message,
           status: order.status,
           totalPrice: order.totalPrice || order.unitPrice || 0,
@@ -671,6 +683,7 @@ async function getOrderById(req, res) {
         customerId: order.customerId,
         deliveryDate: order.deliveryDate,
         deliveryAddress: order.deliveryAddress,
+        phone: order.phone || '',
         message: order.message,
         status: order.status,
         totalPrice: order.totalPrice || order.unitPrice || 0,
