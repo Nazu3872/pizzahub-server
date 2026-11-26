@@ -24,63 +24,90 @@ function getJWKS() {
  * Strictly loads the user from the MongoDB database to enforce real DB role and isBlocked status.
  */
 async function verifyJWT(req, res, next) {
+  let token = null;
   const authHeader = req.headers['authorization'];
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({
-      success: false,
-      message: 'Unauthorized: Missing or malformed Bearer token',
-    });
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1]?.trim();
+  } else if (req.headers['x-session-token']) {
+    token = String(req.headers['x-session-token']).trim();
+  } else if (req.headers['cookie']) {
+    const cookies = req.headers['cookie'];
+    const match = cookies.match(/(?:better-auth\.session_token|__Secure-better-auth\.session_token)=([^;]+)/);
+    if (match && match[1]) {
+      const rawCookieVal = decodeURIComponent(match[1]);
+      token = rawCookieVal.split('.')[0]?.trim();
+    }
   }
 
-  const token = authHeader.split(' ')[1]?.trim();
   if (!token) {
     return res.status(401).json({
       success: false,
-      message: 'Unauthorized: Empty token provided',
+      message: 'Unauthorized: Missing or malformed Bearer token or session cookie',
     });
   }
 
-  let payload = null;
+  let userId = null;
+  let userEmail = null;
 
-  try {
-    const jwks = getJWKS();
-    if (jwks) {
-      try {
-        const { payload: verifiedPayload } = await jwtVerify(token, jwks);
-        payload = verifiedPayload;
-      } catch (jwksErr) {
-        // Fallback to symmetric secret if available
-        if (process.env.BETTER_AUTH_SECRET) {
-          const secret = new TextEncoder().encode(process.env.BETTER_AUTH_SECRET);
-          const { payload: verifiedPayload } = await jwtVerify(token, secret);
+  // 1. If it's a 3-part JWT, attempt cryptographic verification first
+  const isLikelyJWT = token.split('.').length === 3;
+  if (isLikelyJWT) {
+    try {
+      const jwks = getJWKS();
+      let payload = null;
+      if (jwks) {
+        try {
+          const { payload: verifiedPayload } = await jwtVerify(token, jwks);
           payload = verifiedPayload;
-        } else {
-          throw jwksErr;
+        } catch (jwksErr) {
+          if (process.env.BETTER_AUTH_SECRET) {
+            const secret = new TextEncoder().encode(process.env.BETTER_AUTH_SECRET);
+            const { payload: verifiedPayload } = await jwtVerify(token, secret);
+            payload = verifiedPayload;
+          } else {
+            throw jwksErr;
+          }
         }
+      } else if (process.env.BETTER_AUTH_SECRET) {
+        const secret = new TextEncoder().encode(process.env.BETTER_AUTH_SECRET);
+        const { payload: verifiedPayload } = await jwtVerify(token, secret);
+        payload = verifiedPayload;
       }
-    } else if (process.env.BETTER_AUTH_SECRET) {
-      const secret = new TextEncoder().encode(process.env.BETTER_AUTH_SECRET);
-      const { payload: verifiedPayload } = await jwtVerify(token, secret);
-      payload = verifiedPayload;
-    } else {
-      return res.status(500).json({
-        success: false,
-        message: 'JWT verification key/JWKS endpoint is not configured on server',
-      });
+
+      if (payload) {
+        userId = payload.sub || payload.id || payload.userId;
+        userEmail = payload.email;
+      }
+    } catch (jwtErr) {
+      // If JWT verification fails, continue to check DB session token fallback
     }
-  } catch (jwtErr) {
-    return res.status(401).json({
-      success: false,
-      message: `Unauthorized: ${jwtErr.message || 'Invalid or expired JWT token'}`,
-    });
   }
 
-  // Extract user identifier from token
-  const userId = payload.sub || payload.id || payload.userId;
+  // 2. Fallback / Direct check: query the session collection in MongoDB
+  if (!userId) {
+    try {
+      const db = getDB();
+      const sessionsCollection = db.collection('session');
+      const cleanToken = token.includes('.') && token.split('.').length === 2 ? token.split('.')[0] : token;
+      
+      const sessionDoc = await sessionsCollection.findOne({
+        token: cleanToken,
+        expiresAt: { $gt: new Date() },
+      });
+
+      if (sessionDoc && sessionDoc.userId) {
+        userId = sessionDoc.userId;
+      }
+    } catch (sessionDbErr) {
+      console.warn('Session DB lookup warning:', sessionDbErr.message);
+    }
+  }
+
   if (!userId) {
     return res.status(401).json({
       success: false,
-      message: 'Unauthorized: Invalid token claims (missing user id)',
+      message: 'Unauthorized: Invalid or expired authentication token / session',
     });
   }
 
@@ -94,8 +121,8 @@ async function verifyJWT(req, res, next) {
     if (ObjectId.isValid(userId)) {
       query.push({ _id: new ObjectId(userId) });
     }
-    if (payload.email) {
-      query.push({ email: payload.email });
+    if (userEmail) {
+      query.push({ email: userEmail });
     }
 
     const user = await usersCollection.findOne({ $or: query });
